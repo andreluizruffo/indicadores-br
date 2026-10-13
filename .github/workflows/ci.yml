@@ -1,0 +1,40 @@
+# A cada envio: roda os testes e depois sobe tudo com Docker + PostgreSQL de verdade,
+# coleta dados reais do Banco Central e confere se a API responde.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.17"
+      - run: uv sync --frozen
+      - run: uv run pytest -q
+
+  docker-postgres:
+    needs: testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sobe o PostgreSQL e a API
+        run: docker compose up -d --build --wait db api
+      - name: Roda o pipeline (dados reais desde 2026-01-01)
+        run: docker compose run --rm pipeline indicadores --desde 2026-01-01
+      - name: Roda de novo para provar que é incremental e idempotente
+        run: docker compose run --rm pipeline indicadores
+      - name: Confere a API
+        run: |
+          curl -fsS localhost:8000/series | tee series.json
+          python3 -c "import json; d=json.load(open('series.json')); assert all(s['ultimo'] for s in d), d"
+          curl -fsS localhost:8000/series/dolar/ultimo
+          curl -fsS "localhost:8000/execucoes?limite=10"
+      - if: always()
+        run: docker compose logs
