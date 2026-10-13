@@ -4,6 +4,8 @@ Pipeline de dados em Python que coleta indicadores econômicos da **API pública
 
 > 🇺🇸 English summary below.
 
+![Painel com os indicadores e o gráfico do dólar](docs/painel.png)
+
 ## O que ele faz
 
 ```
@@ -35,6 +37,7 @@ API do Banco Central (SGS)  →  extração  →  transformação  →  carga (P
 
 | Rota | O que retorna |
 | --- | --- |
+| `GET /` | painel com o valor atual de cada indicador e gráfico com seletor de período |
 | `GET /series` | catálogo com o valor mais recente de cada série |
 | `GET /series/{slug}?inicio=AAAA-MM-DD&fim=AAAA-MM-DD` | histórico (padrão: último ano) |
 | `GET /series/{slug}/ultimo` | valor mais recente |
@@ -63,7 +66,7 @@ curl localhost:8000/series
 
 ## Testes e CI
 
-- **19 testes** com pytest, sem internet: a API do Banco Central é simulada (`httpx.MockTransport`), incluindo falhas, respostas fora do padrão, carga incremental, idempotência e erro isolado por série.
+- **20 testes** com pytest, sem internet: a API do Banco Central é simulada (`httpx.MockTransport`), incluindo falhas, respostas fora do padrão, carga incremental, idempotência e erro isolado por série.
 - **GitHub Actions** em todo envio: roda os testes e depois sobe **PostgreSQL + API em Docker**, coleta dados reais, roda de novo para provar a carga incremental e confere as respostas da API.
 
 ## Estrutura
@@ -83,4 +86,4 @@ tests/          testes com a API do Banco Central simulada
 
 ## 🇺🇸 English summary
 
-A Python data pipeline that pulls Brazilian economic indicators (USD/BRL, Selic, CDI, IPCA, IGP-M) from the Central Bank's public API, validates them, loads them into PostgreSQL with **incremental, idempotent upserts**, and serves them through a **FastAPI** service. It handles the API's real quirks (10-year window limit, `404` errors wrapped in `200` responses, future-dated Selic targets), retries transient failures, isolates per-series errors and logs every run. 19 pytest tests run offline against a mocked API; GitHub Actions runs them and then spins up PostgreSQL + the API in Docker, ingests real data and checks the endpoints.
+A Python data pipeline that pulls Brazilian economic indicators (USD/BRL, Selic, CDI, IPCA, IGP-M) from the Central Bank's public API, validates them, loads them into PostgreSQL with **incremental, idempotent upserts**, and serves them through a **FastAPI** service. It handles the API's real quirks (10-year window limit, `404` errors wrapped in `200` responses, future-dated Selic targets), retries transient failures, isolates per-series errors and logs every run. 20 pytest tests run offline against a mocked API; GitHub Actions runs them and then spins up PostgreSQL + the API in Docker, ingests real data and checks the endpoints.
