@@ -4,45 +4,84 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Indicadores BR</title>
+<link rel="icon" href="data:," />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
     --fundo: #f6f7fb; --cartao: #ffffff; --texto: #1d2330; --suave: #5f6b7d;
-    --borda: #e2e6ef; --destaque: #1f6feb; --destaque-fundo: #e8f0fe;
+    --borda: #e2e6ef; --destaque: #1f6feb; --destaque-fundo: #e8f0fe; --sobre-destaque: #ffffff;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --fundo: #0f141c; --cartao: #171e29; --texto: #e6ebf2; --suave: #93a0b4;
-      --borda: #263040; --destaque: #5b9dff; --destaque-fundo: #1b2a42;
+      --borda: #263040; --destaque: #5b9dff; --destaque-fundo: #1b2a42; --sobre-destaque: #0f141c;
     }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--fundo); color: var(--texto);
          font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; }
-  main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 40px; }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 32px; }
   h1 { margin: 0; font-size: 28px; }
-  .sub { color: var(--suave); margin: 6px 0 22px; }
-  .cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .sub { color: var(--suave); margin: 4px 0 24px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--destaque); outline-offset: 2px; }
+
+  /* Cartões: 5 por linha no computador, 3 + 2 no tablet, 2 + 2 + 1 no celular */
+  .cartoes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
   .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px;
-            padding: 14px 16px; cursor: pointer; text-align: left; color: inherit; font: inherit; }
+            padding: 12px 16px; text-align: left; display: flex; flex-direction: column;
+            justify-content: flex-start; min-width: 0; }
   .cartao:hover { border-color: var(--destaque); }
   .cartao.ativo { border-color: var(--destaque); background: var(--destaque-fundo); }
-  .cartao .nome { font-size: 13px; color: var(--suave); }
-  .cartao .valor { font-size: 24px; font-weight: 700; margin: 4px 0 2px; }
+  .cartao .nome { font-size: 14px; font-weight: 600; }
+  .cartao .oque { font-size: 13px; color: var(--suave); }
+  .cartao .valor { font-size: 24px; font-weight: 700; margin: 8px 0 4px; white-space: nowrap; }
+  .cartao .unidade { font-size: 14px; font-weight: 600; color: var(--suave); }
   .cartao .data { font-size: 12px; color: var(--suave); }
+  @media (max-width: 900px) {
+    .cartoes { grid-template-columns: repeat(6, 1fr); }
+    .cartao { grid-column: span 2; }
+    .cartao:nth-child(4), .cartao:nth-child(5) { grid-column: span 3; }
+  }
+  @media (max-width: 560px) {
+    .cartoes { grid-template-columns: repeat(2, 1fr); }
+    .cartao, .cartao:nth-child(4) { grid-column: span 1; }
+    .cartao:nth-child(5) { grid-column: span 2; }
+  }
+
   .painel { background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px;
             padding: 16px; margin-top: 16px; }
-  .topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
   .topo h2 { margin: 0; font-size: 18px; }
-  .periodos { display: flex; gap: 6px; flex-wrap: wrap; }
+  .topo .cabeca { flex: 1 1 320px; min-width: 0; }
+  .explica { margin: 4px 0 0; color: var(--suave); font-size: 14px; max-width: 640px; }
+  .periodos { display: flex; gap: 8px; flex-wrap: wrap; }
   .periodos button { border: 1px solid var(--borda); background: transparent; color: var(--texto);
-                     border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 14px; }
-  .periodos button.ativo { background: var(--destaque); border-color: var(--destaque); color: #fff; }
-  .grafico { position: relative; height: 340px; margin-top: 12px; }
-  .resumo { color: var(--suave); font-size: 14px; margin-top: 8px; }
-  footer { margin-top: 22px; color: var(--suave); font-size: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+                     border-radius: 8px; padding: 8px 12px; min-height: 40px; font-size: 14px; }
+  .periodos button:hover { border-color: var(--destaque); }
+  .periodos button[aria-pressed="true"] { background: var(--destaque); border-color: var(--destaque); color: var(--sobre-destaque); }
+  @media (max-width: 560px) {
+    .periodos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; width: 100%; }
+    .periodos button { padding: 8px 4px; }
+  }
+
+  .grafico { position: relative; height: 320px; margin-top: 12px; }
+  .grafico canvas { transition: opacity .15s; }
+  .painel[aria-busy="true"] .grafico canvas { opacity: .35; }
+  .grafico-aviso { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px;
+                   align-items: center; justify-content: center; text-align: center; color: var(--suave); }
+  .grafico-aviso[hidden] { display: none; }
+  .grafico-aviso span { background: var(--cartao); padding: 4px 12px; border-radius: 8px; }
+  .resumo { color: var(--suave); font-size: 14px; margin: 8px 0 0; min-height: 20px; }
+
+  .tentar { border: 1px solid var(--destaque); background: transparent; color: var(--destaque);
+            border-radius: 8px; padding: 8px 16px; min-height: 40px; font-size: 14px; }
+  .aviso { color: var(--suave); padding: 24px 0; grid-column: 1 / -1; margin: 0; }
+  .aviso .tentar { margin-top: 12px; display: block; }
+
+  footer { margin-top: 24px; color: var(--suave); font-size: 14px; display: flex; gap: 8px 16px; flex-wrap: wrap; }
   footer a { color: var(--destaque); }
-  .aviso { color: var(--suave); padding: 24px 0; }
+  #coleta:empty { display: none; }
 </style>
 </head>
 <body>
@@ -50,21 +89,27 @@
   <h1>Indicadores BR</h1>
   <p class="sub">Dólar, Selic, CDI, IPCA e IGP-M coletados da API pública do Banco Central. Clique num indicador para ver o histórico.</p>
 
-  <section class="cartoes" id="cartoes"><p class="aviso">Carregando...</p></section>
+  <section class="cartoes" id="cartoes" aria-label="Valor atual de cada indicador"><p class="aviso">Carregando...</p></section>
 
-  <section class="painel">
+  <section class="painel" id="painel" aria-labelledby="titulo">
     <div class="topo">
-      <h2 id="titulo">—</h2>
-      <div class="periodos" id="periodos">
-        <button data-dias="30">1 mês</button>
-        <button data-dias="182">6 meses</button>
-        <button data-dias="365" class="ativo">1 ano</button>
-        <button data-dias="1826">5 anos</button>
-        <button data-dias="0">Tudo</button>
+      <div class="cabeca">
+        <h2 id="titulo">—</h2>
+        <p class="explica" id="explica"></p>
+      </div>
+      <div class="periodos" id="periodos" role="group" aria-label="Período do gráfico">
+        <button data-dias="30" aria-pressed="false">1 mês</button>
+        <button data-dias="182" aria-pressed="false">6 meses</button>
+        <button data-dias="365" aria-pressed="true">1 ano</button>
+        <button data-dias="1826" aria-pressed="false">5 anos</button>
+        <button data-dias="0" aria-pressed="false">Tudo</button>
       </div>
     </div>
-    <div class="grafico"><canvas id="canvas"></canvas></div>
-    <div class="resumo" id="resumo"></div>
+    <div class="grafico">
+      <canvas id="canvas" role="img" aria-label="Gráfico do histórico"></canvas>
+      <div class="grafico-aviso" id="aviso-grafico" hidden></div>
+    </div>
+    <p class="resumo" id="resumo" aria-live="polite"></p>
   </section>
 
   <footer>
@@ -76,14 +121,39 @@
 </main>
 
 <script>
+  // Textos para quem não é da área. "curto" vai no cartão; "longo" vai embaixo do título do gráfico.
+  // Indicador novo sem entrada aqui continua funcionando: usa o nome que vem da API.
+  const SOBRE = {
+    dolar: { nome: 'Dólar', curto: 'cotação oficial',
+             longo: 'Quanto custa 1 dólar em reais, pela cotação oficial de venda do Banco Central (PTAX).' },
+    selic: { nome: 'Selic', curto: 'juros básicos do país',
+             longo: 'Meta da taxa básica de juros, definida pelo Banco Central. Serve de base para os outros juros da economia.' },
+    cdi:   { nome: 'CDI', curto: 'referência da renda fixa',
+             longo: 'Taxa dos empréstimos entre bancos. É a referência de rendimento de CDB e de fundos de renda fixa.' },
+    ipca:  { nome: 'IPCA', curto: 'inflação oficial',
+             longo: 'Inflação oficial do país, medida pelo IBGE. Cada barra é quanto os preços subiram (ou caíram) no mês.' },
+    igpm:  { nome: 'IGP-M', curto: 'inflação do aluguel',
+             longo: 'Índice de preços da FGV, usado para reajustar aluguel. Cada barra é a variação de um mês.' },
+  };
+  // A API manda a unidade abreviada ("% a.a."); na tela ela aparece por extenso.
+  const UNIDADE = { '% a.a.': 'ao ano', '% no mês': 'no mês' };
+  // Quantos meses cada botão de período representa, para as séries mensais.
+  const MESES = { 30: 1, 182: 6, 365: 12, 1826: 60 };
+
   const estado = { slug: null, dias: 365, series: [] };
   let grafico = null;
+  let ultimoDesenho = null; // guarda o último gráfico para redesenhar quando o tema muda
+  let pedidoAtual = 0;      // evita que uma resposta antiga sobrescreva a mais nova
 
   const numero = (v, casas) => v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
   const casas = (s) => (s.slug === 'dolar' ? 4 : 2);
-  const formatar = (s, v) => (s.unidade === 'R$' ? `R$ ${numero(v, casas(s))}` : `${numero(v, casas(s))}% ${s.unidade.replace('% ', '')}`);
+  const sobre = (s) => SOBRE[s.slug] || { nome: s.nome, curto: '', longo: '' };
+  const unidade = (s) => UNIDADE[s.unidade] || s.unidade.replace('% ', '');
+  const formatar = (s, v) => (s.unidade === 'R$' ? `R$ ${numero(v, casas(s))}` : `${numero(v, casas(s))}% ${unidade(s)}`);
   const dataBR = (iso) => iso.split('-').reverse().join('/');
+  const mesAno = (iso) => `${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
   const isoDe = (d) => d.toISOString().slice(0, 10);
+  const cssVar = (nome) => getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
 
   async function json(url) {
     const r = await fetch(url);
@@ -91,34 +161,99 @@
     return r.json();
   }
 
+  // Valor do cartão com a unidade menor que o número, para o número chamar a atenção.
+  function valorCartao(s) {
+    if (!s.ultimo) return '—';
+    const n = numero(s.ultimo.valor, casas(s));
+    if (s.unidade === 'R$') return `<span class="unidade">R$</span> ${n}`;
+    return `${n}% <span class="unidade">${unidade(s)}</span>`;
+  }
+
   function desenharCartoes() {
     const area = document.getElementById('cartoes');
     area.innerHTML = '';
     for (const s of estado.series) {
+      const ativo = s.slug === estado.slug;
+      const info = sobre(s);
       const b = document.createElement('button');
-      b.className = 'cartao' + (s.slug === estado.slug ? ' ativo' : '');
-      b.innerHTML = `<div class="nome">${s.nome}</div>
-        <div class="valor">${s.ultimo ? formatar(s, s.ultimo.valor) : '—'}</div>
-        <div class="data">${s.ultimo ? (s.periodicidade === 'mensal' ? 'referência ' : 'em ') + dataBR(s.ultimo.data) : 'sem dados ainda'}</div>`;
-      b.onclick = () => { estado.slug = s.slug; desenharCartoes(); carregarHistorico(); };
+      b.className = 'cartao' + (ativo ? ' ativo' : '');
+      b.setAttribute('aria-pressed', String(ativo));
+      b.innerHTML = `<span class="nome">${info.nome}</span>
+        <span class="oque">${info.curto}</span>
+        <span class="valor">${valorCartao(s)}</span>
+        <span class="data">${s.ultimo ? (s.periodicidade === 'mensal' ? 'referência ' + mesAno(s.ultimo.data) : 'em ' + dataBR(s.ultimo.data)) : 'sem dados ainda'}</span>`;
+      b.onclick = () => {
+        if (estado.slug === s.slug) return;
+        estado.slug = s.slug;
+        desenharCartoes();
+        carregarHistorico();
+      };
       area.appendChild(b);
     }
+  }
+
+  // Séries mensais: o período conta meses a partir do último mês publicado,
+  // assim "1 ano" mostra 12 barras e "1 mês" mostra a última, mesmo com a publicação atrasada.
+  function periodo(s) {
+    const fim = new Date();
+    if (!estado.dias) return { inicio: '2015-01-01', fim: isoDe(fim) };
+    if (s.periodicidade === 'mensal' && s.ultimo) {
+      const [ano, mes] = s.ultimo.data.split('-').map(Number);
+      const inicio = new Date(Date.UTC(ano, mes - MESES[estado.dias], 1));
+      return { inicio: isoDe(inicio), fim: isoDe(fim) };
+    }
+    return { inicio: isoDe(new Date(fim.getTime() - estado.dias * 86400000)), fim: isoDe(fim) };
+  }
+
+  function avisoGrafico(html) {
+    const aviso = document.getElementById('aviso-grafico');
+    aviso.innerHTML = html || '';
+    aviso.hidden = !html;
   }
 
   async function carregarHistorico() {
     const s = estado.series.find((x) => x.slug === estado.slug);
     if (!s) return;
-    const fim = new Date();
-    const inicio = estado.dias ? new Date(fim.getTime() - estado.dias * 86400000) : new Date('2015-01-01');
-    const h = await json(`/series/${s.slug}?inicio=${isoDe(inicio)}&fim=${isoDe(fim)}`);
-    document.getElementById('titulo').textContent = `${s.nome} (${s.unidade})`;
+    const meuPedido = ++pedidoAtual;
+    const painel = document.getElementById('painel');
+    const resumo = document.getElementById('resumo');
 
+    // Título e explicação trocam na hora, junto com o cartão selecionado.
+    document.getElementById('titulo').textContent = s.nome;
+    document.getElementById('explica').textContent = sobre(s).longo;
+    painel.setAttribute('aria-busy', 'true');
+    resumo.textContent = 'Carregando...';
+    avisoGrafico('');
+    // Só mostra o aviso no meio do gráfico se demorar, para não piscar quando é rápido.
+    const lento = setTimeout(() => meuPedido === pedidoAtual && avisoGrafico('<span>Carregando...</span>'), 300);
+
+    try {
+      const { inicio, fim } = periodo(s);
+      const h = await json(`/series/${s.slug}?inicio=${inicio}&fim=${fim}`);
+      if (meuPedido !== pedidoAtual) return; // o usuário já pediu outra coisa
+      desenharGrafico(s, h);
+    } catch (erro) {
+      if (meuPedido !== pedidoAtual) return;
+      console.error(erro);
+      if (grafico) { grafico.destroy(); grafico = null; }
+      ultimoDesenho = null;
+      avisoGrafico(`<span>Não foi possível carregar o histórico de ${sobre(s).nome}.</span>
+        <button class="tentar" type="button">Tentar de novo</button>`);
+      document.querySelector('#aviso-grafico .tentar').onclick = carregarHistorico;
+      resumo.textContent = '';
+    } finally {
+      clearTimeout(lento);
+      if (meuPedido === pedidoAtual) painel.removeAttribute('aria-busy');
+    }
+  }
+
+  function desenharGrafico(s, h) {
+    ultimoDesenho = { s, h };
     const mensal = s.periodicidade === 'mensal';
-    const rotulos = h.pontos.map((p) => (mensal ? p.data.slice(5, 7) + '/' + p.data.slice(0, 4) : dataBR(p.data)));
+    const rotulos = h.pontos.map((p) => (mensal ? mesAno(p.data) : dataBR(p.data)));
     const valores = h.pontos.map((p) => p.valor);
-    const cor = getComputedStyle(document.documentElement).getPropertyValue('--destaque').trim();
-    const grade = getComputedStyle(document.documentElement).getPropertyValue('--borda').trim();
-    const texto = getComputedStyle(document.documentElement).getPropertyValue('--suave').trim();
+    const cor = cssVar('--destaque'), grade = cssVar('--borda'), texto = cssVar('--suave');
+    const estreito = document.querySelector('.grafico').clientWidth < 500;
 
     if (grafico) grafico.destroy();
     grafico = new Chart(document.getElementById('canvas'), {
@@ -131,50 +266,87 @@
         plugins: { legend: { display: false },
                    tooltip: { callbacks: { label: (c) => formatar(s, c.parsed.y) } } },
         scales: {
-          x: { ticks: { maxTicksLimit: 8, color: texto }, grid: { display: false } },
+          x: { ticks: { maxTicksLimit: estreito ? 4 : 8, maxRotation: 0, color: texto }, grid: { display: false } },
           y: { ticks: { color: texto, callback: (v) => numero(v, 2) }, grid: { color: grade } },
         },
       },
     });
 
     const resumo = document.getElementById('resumo');
-    if (!valores.length) { resumo.textContent = 'Sem dados no período.'; return; }
+    const canvas = document.getElementById('canvas');
+    if (!valores.length) {
+      avisoGrafico('<span>Sem dados neste período.</span>');
+      resumo.textContent = 'Sem dados no período.';
+      canvas.setAttribute('aria-label', `Gráfico de ${sobre(s).nome}: sem dados no período.`);
+      return;
+    }
+    avisoGrafico('');
+    const primeiro = valores[0], ultimo = valores[valores.length - 1];
     const min = Math.min(...valores), max = Math.max(...valores);
-    let texto2 = `${h.total} valores · mínimo ${formatar(s, min)} · máximo ${formatar(s, max)}`;
+    const partes = [];
+    // O que mais interessa no período vem primeiro.
     if (s.slug === 'dolar') {
-      const variacao = (valores[valores.length - 1] / valores[0] - 1) * 100;
-      texto2 += ` · variação no período ${variacao >= 0 ? '+' : ''}${numero(variacao, 2)}%`;
-    }
-    if (mensal) {
+      const variacao = (ultimo / primeiro - 1) * 100;
+      partes.push(`variação no período ${variacao >= 0 ? '+' : ''}${numero(variacao, 2)}%`);
+    } else if (mensal) {
       const acumulado = (valores.reduce((a, v) => a * (1 + v / 100), 1) - 1) * 100;
-      texto2 += ` · acumulado no período ${numero(acumulado, 2)}%`;
+      partes.push(`acumulado no período ${numero(acumulado, 2)}%`);
+    } else {
+      partes.push(`no período foi de ${formatar(s, primeiro)} para ${formatar(s, ultimo)}`);
     }
-    resumo.textContent = texto2;
+    partes.push(`mínimo ${formatar(s, min)}`, `máximo ${formatar(s, max)}`);
+    partes.push(mensal ? `${h.total} ${h.total === 1 ? 'mês' : 'meses'}` : `${h.total} valores diários`);
+    const texto2 = partes.join(' · ');
+    resumo.textContent = texto2.charAt(0).toUpperCase() + texto2.slice(1);
+    canvas.setAttribute('aria-label', `Gráfico de ${sobre(s).nome}. ${resumo.textContent}`);
   }
 
   document.getElementById('periodos').addEventListener('click', (e) => {
     const b = e.target.closest('button');
-    if (!b) return;
+    if (!b || b.getAttribute('aria-pressed') === 'true') return;
     estado.dias = Number(b.dataset.dias);
-    document.querySelectorAll('#periodos button').forEach((x) => x.classList.toggle('ativo', x === b));
+    document.querySelectorAll('#periodos button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     carregarHistorico();
   });
 
-  (async () => {
+  // Se o sistema trocar entre claro e escuro com a página aberta, o gráfico acompanha.
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (ultimoDesenho) desenharGrafico(ultimoDesenho.s, ultimoDesenho.h);
+  });
+
+  async function iniciar() {
+    const area = document.getElementById('cartoes');
+    const painel = document.getElementById('painel');
+    area.innerHTML = '<p class="aviso">Carregando...</p>';
     try {
       estado.series = await json('/series');
-      estado.slug = estado.series[0]?.slug;
-      desenharCartoes();
-      await carregarHistorico();
-      const [ultima] = await json('/execucoes?limite=1');
-      if (ultima) {
-        const quando = new Date(ultima.iniciada_em.endsWith('Z') || ultima.iniciada_em.includes('+') ? ultima.iniciada_em : ultima.iniciada_em + 'Z');
-        document.getElementById('coleta').textContent = `Última coleta: ${quando.toLocaleString('pt-BR')}`;
-      }
     } catch (erro) {
-      document.getElementById('cartoes').innerHTML = `<p class="aviso">Não foi possível carregar os dados (${erro.message}).</p>`;
+      console.error(erro);
+      painel.hidden = true;
+      area.innerHTML = `<div class="aviso" role="alert">Não foi possível carregar os indicadores agora.
+        Confira sua conexão e tente de novo.<button class="tentar" type="button">Tentar de novo</button></div>`;
+      area.querySelector('.tentar').onclick = iniciar;
+      return;
     }
-  })();
+    painel.hidden = false;
+    estado.slug = estado.slug || estado.series[0]?.slug;
+    desenharCartoes();
+    carregarHistorico();
+    mostrarUltimaColeta(); // se falhar, só a linha do rodapé fica de fora
+  }
+
+  async function mostrarUltimaColeta() {
+    try {
+      const [ultima] = await json('/execucoes?limite=1');
+      if (!ultima) return;
+      const quando = new Date(ultima.iniciada_em.endsWith('Z') || ultima.iniciada_em.includes('+') ? ultima.iniciada_em : ultima.iniciada_em + 'Z');
+      document.getElementById('coleta').textContent = `Última coleta: ${quando.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`;
+    } catch (erro) {
+      console.error(erro);
+    }
+  }
+
+  iniciar();
 </script>
 </body>
 </html>

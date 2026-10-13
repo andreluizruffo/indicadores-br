@@ -21,15 +21,16 @@ DESCRICAO = """
 Indicadores econômicos do Brasil coletados diariamente da
 [API pública do Banco Central](https://dadosabertos.bcb.gov.br/) e servidos aqui já tratados.
 
-| Indicador | `slug` | Unidade |
-| --- | --- | --- |
-| Dólar comercial (PTAX, venda) | `dolar` | R$ |
-| Meta Selic | `selic` | % ao ano |
-| CDI (anualizado) | `cdi` | % ao ano |
-| IPCA | `ipca` | % no mês |
-| IGP-M | `igpm` | % no mês |
+| Indicador | O que é | `slug` | Unidade |
+| --- | --- | --- | --- |
+| Dólar comercial (PTAX, venda) | cotação oficial do dólar em reais | `dolar` | `R$` |
+| Meta Selic | taxa básica de juros do país | `selic` | `% a.a.` (por cento ao ano) |
+| CDI (anualizado) | juros entre bancos, referência da renda fixa | `cdi` | `% a.a.` (por cento ao ano) |
+| IPCA | inflação oficial (IBGE) | `ipca` | `% no mês` |
+| IGP-M | índice de preços da FGV, usado no aluguel | `igpm` | `% no mês` |
 
 **Como testar:** abra uma rota, clique em **Try it out** e depois em **Execute**.
+Para ver os dados em gráfico, abra o [painel](/).
 """
 
 engine = load.criar_engine(DATABASE_URL)
@@ -52,9 +53,9 @@ class Valor(BaseModel):
 
 class Indicador(BaseModel):
     slug: SlugSerie = Field(description="Identificador usado nas outras rotas")
-    nome: str = Field(examples=["Dólar comercial (PTAX, venda)"])
-    unidade: str = Field(examples=["R$"])
-    periodicidade: str = Field(description="diaria ou mensal", examples=["diaria"])
+    nome: str = Field(description="Nome completo do indicador", examples=["Dólar comercial (PTAX, venda)"])
+    unidade: str = Field(description="`R$`, `% a.a.` (por cento ao ano) ou `% no mês`", examples=["R$"])
+    periodicidade: str = Field(description="`diaria` ou `mensal` (um valor por mês, com a data no dia 1)", examples=["diaria"])
     ultimo: Valor | None = Field(description="Valor mais recente; vazio se o pipeline ainda não rodou")
 
 
@@ -63,10 +64,10 @@ class Historico(BaseModel):
     nome: str
     unidade: str
     periodicidade: str
-    inicio: date
-    fim: date
+    inicio: date = Field(description="Início do período consultado")
+    fim: date = Field(description="Fim do período consultado")
     total: int = Field(description="Quantidade de valores no período")
-    pontos: list[Valor]
+    pontos: list[Valor] = Field(description="Valores do período, do mais antigo para o mais recente")
 
 
 class Ultimo(Valor):
@@ -75,14 +76,14 @@ class Ultimo(Valor):
 
 
 class Execucao(BaseModel):
-    serie: str
-    iniciada_em: datetime
+    serie: str = Field(description="`slug` do indicador coletado")
+    iniciada_em: datetime = Field(description="Quando a coleta começou (horário UTC)")
     inicio_periodo: date | None = Field(description="A partir de que data os dados foram pedidos")
     lidos: int = Field(description="Registros recebidos da API do Banco Central")
     gravados: int = Field(description="Registros gravados ou atualizados no banco")
     descartados: int = Field(description="Registros recusados pelas regras de qualidade")
-    status: str = Field(examples=["ok"])
-    erro: str | None = None
+    status: str = Field(description="`ok` ou `erro`", examples=["ok"])
+    erro: str | None = Field(None, description="Motivo da falha, quando o status é `erro`")
 
 
 def conexao():

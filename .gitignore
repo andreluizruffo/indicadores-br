@@ -11,3 +11,6 @@ wheels/
 
 # Banco local de desenvolvimento
 *.db
+
+# Capturas da revisão de design (locais)
+docs/revisao-design/
