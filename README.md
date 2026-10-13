@@ -82,6 +82,13 @@ src/indicadores/
 tests/          testes com a API do Banco Central simulada
 ```
 
+## Documentação
+
+- [Decisões técnicas](docs/decisoes.md): por que cada escolha da stack, dos dados e da coleta
+- [Esquema do banco](docs/esquema.md): diagrama das tabelas e regras
+- [Brief de design do painel](docs/design.md): público, fluxo, cores, estados e pontos em aberto
+- [Plano da fase 2](docs/plano-fase-2.md): banco hospedado, coleta diária e link público
+
 ---
 
 ## 🇺🇸 English summary
