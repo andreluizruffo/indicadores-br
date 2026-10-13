@@ -16,7 +16,7 @@ API do Banco Central (SGS)  →  extração  →  transformação  →  carga (P
 | --- | --- | --- |
 | Dólar comercial (PTAX, venda) | 1 | diária |
 | Meta Selic | 432 | diária |
-| CDI | 12 | diária |
+| CDI (anualizado, base 252) | 4389 | diária |
 | IPCA | 433 | mensal |
 | IGP-M | 189 | mensal |
 

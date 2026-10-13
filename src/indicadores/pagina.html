@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Indicadores BR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --fundo: #f6f7fb; --cartao: #ffffff; --texto: #1d2330; --suave: #5f6b7d;
+    --borda: #e2e6ef; --destaque: #1f6feb; --destaque-fundo: #e8f0fe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fundo: #0f141c; --cartao: #171e29; --texto: #e6ebf2; --suave: #93a0b4;
+      --borda: #263040; --destaque: #5b9dff; --destaque-fundo: #1b2a42;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto);
+         font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 40px; }
+  h1 { margin: 0; font-size: 28px; }
+  .sub { color: var(--suave); margin: 6px 0 22px; }
+  .cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px;
+            padding: 14px 16px; cursor: pointer; text-align: left; color: inherit; font: inherit; }
+  .cartao:hover { border-color: var(--destaque); }
+  .cartao.ativo { border-color: var(--destaque); background: var(--destaque-fundo); }
+  .cartao .nome { font-size: 13px; color: var(--suave); }
+  .cartao .valor { font-size: 24px; font-weight: 700; margin: 4px 0 2px; }
+  .cartao .data { font-size: 12px; color: var(--suave); }
+  .painel { background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px;
+            padding: 16px; margin-top: 16px; }
+  .topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .topo h2 { margin: 0; font-size: 18px; }
+  .periodos { display: flex; gap: 6px; flex-wrap: wrap; }
+  .periodos button { border: 1px solid var(--borda); background: transparent; color: var(--texto);
+                     border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 14px; }
+  .periodos button.ativo { background: var(--destaque); border-color: var(--destaque); color: #fff; }
+  .grafico { position: relative; height: 340px; margin-top: 12px; }
+  .resumo { color: var(--suave); font-size: 14px; margin-top: 8px; }
+  footer { margin-top: 22px; color: var(--suave); font-size: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+  footer a { color: var(--destaque); }
+  .aviso { color: var(--suave); padding: 24px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Indicadores BR</h1>
+  <p class="sub">Dólar, Selic, CDI, IPCA e IGP-M coletados da API pública do Banco Central. Clique num indicador para ver o histórico.</p>
+
+  <section class="cartoes" id="cartoes"><p class="aviso">Carregando...</p></section>
+
+  <section class="painel">
+    <div class="topo">
+      <h2 id="titulo">—</h2>
+      <div class="periodos" id="periodos">
+        <button data-dias="30">1 mês</button>
+        <button data-dias="182">6 meses</button>
+        <button data-dias="365" class="ativo">1 ano</button>
+        <button data-dias="1826">5 anos</button>
+        <button data-dias="0">Tudo</button>
+      </div>
+    </div>
+    <div class="grafico"><canvas id="canvas"></canvas></div>
+    <div class="resumo" id="resumo"></div>
+  </section>
+
+  <footer>
+    <span id="coleta"></span>
+    <a href="/docs">Documentação da API</a>
+    <a href="https://github.com/andreluizruffo/indicadores-br">Código no GitHub</a>
+    <a href="https://dadosabertos.bcb.gov.br/">Fonte: Banco Central</a>
+  </footer>
+</main>
+
+<script>
+  const estado = { slug: null, dias: 365, series: [] };
+  let grafico = null;
+
+  const numero = (v, casas) => v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+  const casas = (s) => (s.slug === 'dolar' ? 4 : 2);
+  const formatar = (s, v) => (s.unidade === 'R$' ? `R$ ${numero(v, casas(s))}` : `${numero(v, casas(s))}% ${s.unidade.replace('% ', '')}`);
+  const dataBR = (iso) => iso.split('-').reverse().join('/');
+  const isoDe = (d) => d.toISOString().slice(0, 10);
+
+  async function json(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url}: ${r.status}`);
+    return r.json();
+  }
+
+  function desenharCartoes() {
+    const area = document.getElementById('cartoes');
+    area.innerHTML = '';
+    for (const s of estado.series) {
+      const b = document.createElement('button');
+      b.className = 'cartao' + (s.slug === estado.slug ? ' ativo' : '');
+      b.innerHTML = `<div class="nome">${s.nome}</div>
+        <div class="valor">${s.ultimo ? formatar(s, s.ultimo.valor) : '—'}</div>
+        <div class="data">${s.ultimo ? (s.periodicidade === 'mensal' ? 'referência ' : 'em ') + dataBR(s.ultimo.data) : 'sem dados ainda'}</div>`;
+      b.onclick = () => { estado.slug = s.slug; desenharCartoes(); carregarHistorico(); };
+      area.appendChild(b);
+    }
+  }
+
+  async function carregarHistorico() {
+    const s = estado.series.find((x) => x.slug === estado.slug);
+    if (!s) return;
+    const fim = new Date();
+    const inicio = estado.dias ? new Date(fim.getTime() - estado.dias * 86400000) : new Date('2015-01-01');
+    const h = await json(`/series/${s.slug}?inicio=${isoDe(inicio)}&fim=${isoDe(fim)}`);
+    document.getElementById('titulo').textContent = `${s.nome} (${s.unidade})`;
+
+    const mensal = s.periodicidade === 'mensal';
+    const rotulos = h.pontos.map((p) => (mensal ? p.data.slice(5, 7) + '/' + p.data.slice(0, 4) : dataBR(p.data)));
+    const valores = h.pontos.map((p) => p.valor);
+    const cor = getComputedStyle(document.documentElement).getPropertyValue('--destaque').trim();
+    const grade = getComputedStyle(document.documentElement).getPropertyValue('--borda').trim();
+    const texto = getComputedStyle(document.documentElement).getPropertyValue('--suave').trim();
+
+    if (grafico) grafico.destroy();
+    grafico = new Chart(document.getElementById('canvas'), {
+      type: mensal ? 'bar' : 'line',
+      data: { labels: rotulos, datasets: [{ data: valores, borderColor: cor, backgroundColor: cor,
+              borderWidth: 2, pointRadius: 0, tension: 0.2 }] },
+      options: {
+        maintainAspectRatio: false, animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false },
+                   tooltip: { callbacks: { label: (c) => formatar(s, c.parsed.y) } } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 8, color: texto }, grid: { display: false } },
+          y: { ticks: { color: texto, callback: (v) => numero(v, 2) }, grid: { color: grade } },
+        },
+      },
+    });
+
+    const resumo = document.getElementById('resumo');
+    if (!valores.length) { resumo.textContent = 'Sem dados no período.'; return; }
+    const min = Math.min(...valores), max = Math.max(...valores);
+    let texto2 = `${h.total} valores · mínimo ${formatar(s, min)} · máximo ${formatar(s, max)}`;
+    if (s.slug === 'dolar') {
+      const variacao = (valores[valores.length - 1] / valores[0] - 1) * 100;
+      texto2 += ` · variação no período ${variacao >= 0 ? '+' : ''}${numero(variacao, 2)}%`;
+    }
+    if (mensal) {
+      const acumulado = (valores.reduce((a, v) => a * (1 + v / 100), 1) - 1) * 100;
+      texto2 += ` · acumulado no período ${numero(acumulado, 2)}%`;
+    }
+    resumo.textContent = texto2;
+  }
+
+  document.getElementById('periodos').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    estado.dias = Number(b.dataset.dias);
+    document.querySelectorAll('#periodos button').forEach((x) => x.classList.toggle('ativo', x === b));
+    carregarHistorico();
+  });
+
+  (async () => {
+    try {
+      estado.series = await json('/series');
+      estado.slug = estado.series[0]?.slug;
+      desenharCartoes();
+      await carregarHistorico();
+      const [ultima] = await json('/execucoes?limite=1');
+      if (ultima) {
+        const quando = new Date(ultima.iniciada_em.endsWith('Z') || ultima.iniciada_em.includes('+') ? ultima.iniciada_em : ultima.iniciada_em + 'Z');
+        document.getElementById('coleta').textContent = `Última coleta: ${quando.toLocaleString('pt-BR')}`;
+      }
+    } catch (erro) {
+      document.getElementById('cartoes').innerHTML = `<p class="aviso">Não foi possível carregar os dados (${erro.message}).</p>`;
+    }
+  })();
+</script>
+</body>
+</html>

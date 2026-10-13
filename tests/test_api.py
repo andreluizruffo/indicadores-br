@@ -39,8 +39,15 @@ def test_historico_e_ultimo(api):
     assert api.get("/series/dolar/ultimo").json()["valor"] == 5.0096
 
 
+def test_pagina_inicial_com_painel(api):
+    r = api.get("/")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    assert "Indicadores BR" in r.text
+
+
 def test_erros_claros(api):
-    assert api.get("/series/bitcoin").status_code == 404
+    assert api.get("/series/bitcoin").status_code == 422  # fora da lista de séries
     assert api.get("/series/ipca/ultimo").status_code == 404
     assert api.get("/series/dolar?inicio=2026-10-10&fim=2026-01-01").status_code == 422
 

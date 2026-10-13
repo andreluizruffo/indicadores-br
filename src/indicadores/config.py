@@ -19,7 +19,7 @@ class Serie:
 SERIES: tuple[Serie, ...] = (
     Serie(1, "dolar", "Dólar comercial (PTAX, venda)", "R$", "diaria"),
     Serie(432, "selic", "Meta Selic", "% a.a.", "diaria"),
-    Serie(12, "cdi", "CDI", "% a.d.", "diaria"),
+    Serie(4389, "cdi", "CDI (anualizado)", "% a.a.", "diaria"),
     Serie(433, "ipca", "IPCA", "% no mês", "mensal"),
     Serie(189, "igpm", "IGP-M", "% no mês", "mensal"),
 )
