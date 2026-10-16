@@ -6,22 +6,41 @@
 <title>Indicadores BR</title>
 <link rel="icon" href="data:," />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  // Tema: a escolha salva no navegador ou, sem escolha, o tema do sistema.
+  // Roda antes de desenhar a página para não piscar o tema errado.
+  (function () {
+    let salvo = null;
+    try { salvo = localStorage.getItem('tema'); } catch (e) { /* navegador sem localStorage: segue o sistema */ }
+    const escuro = salvo ? salvo === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = escuro ? 'dark' : 'light';
+  })();
+</script>
 <style>
+  /* Paleta: claro no :root, escuro no data-theme="dark" (quem escolhe o tema é o script acima). */
   :root {
+    color-scheme: light;
     --fundo: #f6f7fb; --cartao: #ffffff; --texto: #1d2330; --suave: #5f6b7d;
     --borda: #e2e6ef; --destaque: #1f6feb; --destaque-fundo: #e8f0fe; --sobre-destaque: #ffffff;
+    --destaque-apagado: #628fee;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --fundo: #0f141c; --cartao: #171e29; --texto: #e6ebf2; --suave: #93a0b4;
-      --borda: #263040; --destaque: #5b9dff; --destaque-fundo: #1b2a42; --sobre-destaque: #0f141c;
-    }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --fundo: #0f141c; --cartao: #171e29; --texto: #e6ebf2; --suave: #93a0b4;
+    --borda: #263040; --destaque: #5b9dff; --destaque-fundo: #1b2a42; --sobre-destaque: #0f141c;
+    --destaque-apagado: #3f70ba;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--fundo); color: var(--texto);
          font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; }
   main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 32px; }
+  .cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   h1 { margin: 0; font-size: 28px; }
+  /* Botão de tema: discreto como os de período; ligado = borda e fundo de destaque, igual ao cartão selecionado */
+  .tema { flex: none; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--borda);
+          background: transparent; border-radius: 8px; padding: 8px 12px; min-height: 40px; font-size: 14px; }
+  .tema:hover { border-color: var(--destaque); }
+  .tema[aria-pressed="true"] { border-color: var(--destaque); background: var(--destaque-fundo); }
   .sub { color: var(--suave); margin: 4px 0 24px; }
   button { font: inherit; color: inherit; cursor: pointer; }
   button:focus-visible, a:focus-visible { outline: 2px solid var(--destaque); outline-offset: 2px; }
@@ -86,7 +105,14 @@
 </head>
 <body>
 <main>
-  <h1>Indicadores BR</h1>
+  <header class="cabecalho">
+    <h1>Indicadores BR</h1>
+    <button class="tema" id="tema" type="button" aria-pressed="false">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      Tema escuro
+    </button>
+  </header>
   <p class="sub">Dólar, Selic, CDI, IPCA e IGP-M coletados da API pública do Banco Central. Clique num indicador para ver o histórico.</p>
 
   <section class="cartoes" id="cartoes" aria-label="Valor atual de cada indicador"><p class="aviso">Carregando...</p></section>
@@ -121,15 +147,16 @@
 </main>
 
 <script>
-  // Textos para quem não é da área. "curto" vai no cartão; "longo" vai embaixo do título do gráfico.
+  // Textos para quem não é da área. "nome" vai no cartão e no título do gráfico; "curto" vai no cartão;
+  // "longo" vai embaixo do título do gráfico e guarda o detalhe técnico (PTAX, venda, anualizado).
   // Indicador novo sem entrada aqui continua funcionando: usa o nome que vem da API.
   const SOBRE = {
     dolar: { nome: 'Dólar', curto: 'cotação oficial',
              longo: 'Quanto custa 1 dólar em reais, pela cotação oficial de venda do Banco Central (PTAX).' },
     selic: { nome: 'Selic', curto: 'juros básicos do país',
-             longo: 'Meta da taxa básica de juros, definida pelo Banco Central. Serve de base para os outros juros da economia.' },
+             longo: 'Meta Selic: a taxa básica de juros definida pelo Banco Central. Serve de base para os outros juros da economia.' },
     cdi:   { nome: 'CDI', curto: 'referência da renda fixa',
-             longo: 'Taxa dos empréstimos entre bancos. É a referência de rendimento de CDB e de fundos de renda fixa.' },
+             longo: 'Taxa dos empréstimos entre bancos, anualizada (convertida para % ao ano). É a referência de rendimento de CDB e de fundos de renda fixa.' },
     ipca:  { nome: 'IPCA', curto: 'inflação oficial',
              longo: 'Inflação oficial do país, medida pelo IBGE. Cada barra é quanto os preços subiram (ou caíram) no mês.' },
     igpm:  { nome: 'IGP-M', curto: 'inflação do aluguel',
@@ -219,7 +246,8 @@
     const resumo = document.getElementById('resumo');
 
     // Título e explicação trocam na hora, junto com o cartão selecionado.
-    document.getElementById('titulo').textContent = s.nome;
+    // Título curto ("Dólar", "CDI"); o nome técnico da API fica na explicação embaixo.
+    document.getElementById('titulo').textContent = sobre(s).nome;
     document.getElementById('explica').textContent = sobre(s).longo;
     painel.setAttribute('aria-busy', 'true');
     resumo.textContent = 'Carregando...';
@@ -247,23 +275,110 @@
     }
   }
 
+  // Valor curto para o rótulo dentro do gráfico ("R$ 5,0096", "13,65%"); a unidade completa está no cartão.
+  const valorCurto = (s, v) => (s.unidade === 'R$' ? `R$ ${numero(v, casas(s))}` : `${numero(v, casas(s))}%`);
+
+  // Plugin próprio (sem biblioteca extra): escreve o valor mais recente perto do último ponto/barra,
+  // para ele aparecer sem passar o mouse (no celular não existe "passar o mouse").
+  // Na linha, o rótulo vai acima do ponto; se cobrir a linha, vai abaixo. Na barra, vai na ponta da barra.
+  const rotuloFinal = {
+    id: 'rotuloFinal',
+    afterDatasetsDraw(chart, _args, opcoes) {
+      const meta = chart.getDatasetMeta(0);
+      const fim = meta.data[meta.data.length - 1];
+      if (!fim || !opcoes.texto) return;
+      const { ctx, chartArea: area } = chart;
+      const barra = meta.type === 'bar';
+      ctx.save();
+      ctx.font = '600 13px "Segoe UI", system-ui, -apple-system, Arial, sans-serif';
+      const larg = Math.ceil(ctx.measureText(opcoes.texto).width) + 12, alt = 22, folga = 8;
+      // Alinhado pela direita com o último ponto, sem passar da borda do gráfico.
+      const direita = Math.min(barra ? fim.x + fim.width / 2 : fim.x + 6, area.right);
+      const x = Math.max(area.left, direita - larg);
+      const negativo = barra && fim.y > fim.base;
+      let y, fio = false;
+      if (barra) {
+        y = negativo ? fim.y + folga : fim.y - folga - alt;
+      } else {
+        // Conta quantos trechos da linha passariam por baixo do rótulo em cada posição.
+        const cobre = (topo) => {
+          let n = 0;
+          for (let i = 1; i < meta.data.length; i++) {
+            const a = meta.data[i - 1], b = meta.data[i];
+            if (b.x < x || a.x > x + larg) continue;
+            for (let t = 0; t <= 1; t += 0.125) {
+              const px = a.x + (b.x - a.x) * t, py = a.y + (b.y - a.y) * t;
+              if (px >= x && px <= x + larg && py >= topo - 2 && py <= topo + alt + 2) n++;
+            }
+          }
+          return n;
+        };
+        // Tenta de perto para longe, acima antes de abaixo; fica na primeira posição que não cobre a linha.
+        // Se nenhuma estiver livre, fica na que cobre menos.
+        const opcoesY = [];
+        for (const d of [folga, 20, 32, 48, 64]) opcoesY.push(fim.y - d - alt, fim.y + d);
+        let melhor = null;
+        for (const topo of opcoesY) {
+          if (topo < 0 || topo + alt > area.bottom) continue;
+          const n = cobre(topo);
+          if (!melhor || n < melhor.n) melhor = { topo, n };
+          if (n === 0) break;
+        }
+        y = melhor ? melhor.topo : fim.y - folga - alt;
+        // Longe do ponto, um fio fino liga o rótulo ao ponto para não deixar dúvida de qual valor é.
+        fio = Math.min(Math.abs(y + alt - fim.y), Math.abs(y - fim.y)) > folga + 1;
+      }
+      y = Math.max(0, Math.min(y, chart.height - alt));
+      if (fio) {
+        ctx.strokeStyle = opcoes.fio;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(fim.x, y < fim.y ? y + alt : y);
+        ctx.lineTo(fim.x, y < fim.y ? fim.y - 6 : fim.y + 6);
+        ctx.stroke();
+      }
+      ctx.fillStyle = opcoes.fundo;
+      ctx.strokeStyle = opcoes.borda;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x + 0.5, y + 0.5, larg - 1, alt - 1, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = opcoes.cor;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(opcoes.texto, x + 6, y + alt / 2 + 1);
+      ctx.restore();
+    },
+  };
+
   function desenharGrafico(s, h) {
     ultimoDesenho = { s, h };
     const mensal = s.periodicidade === 'mensal';
     const rotulos = h.pontos.map((p) => (mensal ? mesAno(p.data) : dataBR(p.data)));
     const valores = h.pontos.map((p) => p.valor);
-    const cor = cssVar('--destaque'), grade = cssVar('--borda'), texto = cssVar('--suave');
+    const cor = cssVar('--destaque'), apagado = cssVar('--destaque-apagado');
+    const fundo = cssVar('--cartao'), grade = cssVar('--borda'), texto = cssVar('--suave');
     const estreito = document.querySelector('.grafico').clientWidth < 500;
+    const ult = valores.length - 1;
+    // Barras: a do último mês na cor cheia, as anteriores um tom mais claro.
+    const corBarra = valores.map((_, i) => (i === ult ? cor : apagado));
 
     if (grafico) grafico.destroy();
     grafico = new Chart(document.getElementById('canvas'), {
       type: mensal ? 'bar' : 'line',
-      data: { labels: rotulos, datasets: [{ data: valores, borderColor: cor, backgroundColor: cor,
-              borderWidth: 2, pointRadius: 0, tension: 0.2 }] },
+      data: { labels: rotulos, datasets: [{ data: valores,
+              borderColor: mensal ? corBarra : cor, backgroundColor: mensal ? corBarra : cor,
+              borderWidth: 2, tension: 0.2,
+              // Linha: só o último ponto aparece, com um anel da cor do cartão para separar da linha.
+              pointRadius: (c) => (c.dataIndex === ult ? 5 : 0), pointHoverRadius: 5,
+              pointBorderColor: fundo, pointBorderWidth: 2, pointHoverBorderWidth: 2 }] },
+      plugins: [rotuloFinal],
       options: {
         maintainAspectRatio: false, animation: false,
+        layout: { padding: { top: 8 } },
         interaction: { mode: 'index', intersect: false },
         plugins: { legend: { display: false },
+                   rotuloFinal: { texto: ult >= 0 ? valorCurto(s, valores[ult]) : '', fundo, borda: grade, fio: texto, cor: cssVar('--texto') },
                    tooltip: { callbacks: { label: (c) => formatar(s, c.parsed.y) } } },
         scales: {
           x: { ticks: { maxTicksLimit: estreito ? 4 : 8, maxRotation: 0, color: texto }, grid: { display: false } },
@@ -298,7 +413,9 @@
     partes.push(mensal ? `${h.total} ${h.total === 1 ? 'mês' : 'meses'}` : `${h.total} valores diários`);
     const texto2 = partes.join(' · ');
     resumo.textContent = texto2.charAt(0).toUpperCase() + texto2.slice(1);
-    canvas.setAttribute('aria-label', `Gráfico de ${sobre(s).nome}. ${resumo.textContent}`);
+    const dataFim = h.pontos[h.pontos.length - 1].data;
+    canvas.setAttribute('aria-label', `Gráfico de ${sobre(s).nome}. Valor mais recente: ${formatar(s, ultimo)} ` +
+      `(${mensal ? 'referência ' + mesAno(dataFim) : 'em ' + dataBR(dataFim)}). ${resumo.textContent}`);
   }
 
   document.getElementById('periodos').addEventListener('click', (e) => {
@@ -309,9 +426,27 @@
     carregarHistorico();
   });
 
-  // Se o sistema trocar entre claro e escuro com a página aberta, o gráfico acompanha.
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  // Tema claro/escuro. Sem escolha salva, segue o sistema; o botão troca e a escolha fica salva no navegador.
+  const botaoTema = document.getElementById('tema');
+  function aplicarTema(tema) {
+    document.documentElement.dataset.theme = tema;
+    botaoTema.setAttribute('aria-pressed', String(tema === 'dark'));
+    // O gráfico é desenhado em canvas: precisa redesenhar para pegar as cores novas.
     if (ultimoDesenho) desenharGrafico(ultimoDesenho.s, ultimoDesenho.h);
+  }
+  function temaSalvo() {
+    try { return localStorage.getItem('tema'); } catch (e) { return null; }
+  }
+  botaoTema.setAttribute('aria-pressed', String(document.documentElement.dataset.theme === 'dark'));
+  botaoTema.addEventListener('click', () => {
+    const novo = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('tema', novo); } catch (e) { /* sem localStorage: vale só até recarregar */ }
+    aplicarTema(novo);
+  });
+  // Se o sistema trocar entre claro e escuro com a página aberta e não houver escolha salva, a página acompanha.
+  const temaDoSistema = matchMedia('(prefers-color-scheme: dark)');
+  temaDoSistema.addEventListener('change', () => {
+    if (!temaSalvo()) aplicarTema(temaDoSistema.matches ? 'dark' : 'light');
   });
 
   async function iniciar() {
